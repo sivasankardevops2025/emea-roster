@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMEA DUTCH WEEKLY ROSTER</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <style>
+        :root {
+            --primary: #003366;
+            --morning: #2ECC71; 
+            --afternoon: #F39C12;
+            --night: #9B59B6;
+            --sunday-special: #3498DB;
+            --off: #E74C3C;
+        }
+
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: #f0f2f5; padding: 20px; }
+        .container { max-width: 99%; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee; }
+        table { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: auto; }
+        th { background-color: var(--primary); color: white; padding: 10px 2px; border-radius: 4px; font-size: 12px; }
+        td { border: 1px solid #ddd; padding: 8px 2px; text-align: center; font-weight: 700; border-radius: 4px; min-height: 45px; word-wrap: break-word; }
+        .name-col { text-align: left; background: #2c3e50 !important; color: white !important; padding-left: 10px; width: 180px; }
+        .status-select { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); font-size: 9px; margin-top: 5px; border-radius: 3px; width: 75px; }
+        select { width: 100%; padding: 4px 0; border: none; font-size: 11px; font-weight: 800; cursor: pointer; background: transparent; white-space: normal; }
+        .s-off { background-color: var(--off) !important; color: white !important; }
+        .s-morning { background-color: var(--morning) !important; color: white !important; }
+        .s-afternoon { background-color: var(--afternoon) !important; color: white !important; }
+        .s-night { background-color: var(--night) !important; color: white !important; }
+        .s-sun { background-color: var(--sunday-special) !important; color: white !important; }
+        .btn { padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; margin-left: 5px;}
+        .btn-excel { background: #27ae60; }
+        .btn-random { background: #16a085; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-section">
+        <h2 style="color: var(--primary); margin: 0;">EMEA DUTCH WEEKLY ROSTER</h2>
+        <div class="controls" style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn btn-random" onclick="smartRandomize()">🎲 Randomize</button>
+            <select id="seasonPicker" style="border: 1px solid #ccc; padding: 5px; width: auto;" onchange="renderRoster()">
+                <option value="summer">☀️ Summer</option>
+                <option value="winter">❄️ Winter (+1hr)</option>
+            </select>
+            <input type="date" id="weekPicker" style="border: 1px solid #ccc; padding: 5px;" onchange="updateCalendarDates()">
+            <button class="btn btn-excel" onclick="exportToExcel()">📊 Export Styled Excel</button>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th class="name-col">Member & Status</th>
+                <th id="d0">MON<div class="date-label"></div></th>
+                <th id="d1">TUE<div class="date-label"></div></th>
+                <th id="d2">WED<div class="date-label"></div></th>
+                <th id="d3">THU<div class="date-label"></div></th>
+                <th id="d4">FRI<div class="date-label"></div></th>
+                <th id="d5">SAT<div class="date-label"></div></th>
+                <th id="d6" style="background-color: var(--sunday-special);">SUN<div class="date-label"></div></th>
+            </tr>
+        </thead>
+        <tbody id="rosterBody"></tbody>
+    </table>
+</div>
+
+<script>
+    const team = ["Sivasankar Murugananatham", "Sonalineveditha Thirumalazhagan", "Reshma Veerabathiran", "Maheswari Boopalan", "Vijayakrishnan Ramesh"];
+
+    function renderRoster() {
+        const body = document.getElementById('rosterBody');
+        const season = document.getElementById('seasonPicker').value;
+        body.innerHTML = '';
+        
+        team.forEach((name) => {
+            const row = document.createElement('tr');
+            const tdName = document.createElement('td');
+            tdName.className = 'name-col';
+            tdName.innerHTML = `<div style="font-size:12px">${name}</div><select class="status-select"><option value="rotate">🔄 Rotate</option><option value="fixed">📌 Fixed</option></select>`;
+            row.appendChild(tdName);
+
+            for(let i=0; i<7; i++) {
+                const td = document.createElement('td');
+                const sel = document.createElement('select');
+                const dailyOptions = (i === 6) ? [{id:"s-off", l:"OFF"}, {id:"s-sun", s:"16:00", e:"18:00", suf:"SHIFT"}] :
+                [{id:"s-off", l:"OFF"}, {id:"s-morning", s:"09:00", e:"18:00", suf:"MORNING"}, {id:"s-afternoon", s:"12:30", e:"21:30", suf:"AFTERNOON"}, {id:"s-night", s:"17:30", e:"02:30", suf:"NIGHT"}];
+                
+                dailyOptions.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    if (s.id === "s-off") opt.text = "OFF";
+                    else {
+                        let ds = s.s, de = s.e;
+                        if (season === 'winter') { ds = addOneHour(ds); de = addOneHour(de); }
+                        opt.text = `${ds}-${de} ${s.suf}`;
+                    }
+                    sel.appendChild(opt);
+                });
+
+                sel.value = 's-off'; td.className = 's-off';
+                
+                // NEW LOGIC: Sync shifts for the entire work week (Mon-Fri)
+                sel.onchange = function() { 
+                    const selectedValue = this.value;
+                    const parentRow = this.closest('tr');
+                    const allDaySelects = parentRow.querySelectorAll('td select:not(.status-select)');
+                    
+                    // If changing a weekday (index 0 to 4), apply to all weekdays
+                    if (i < 5) {
+                        for (let j = 0; j < 5; j++) {
+                            allDaySelects[j].value = selectedValue;
+                            allDaySelects[j].parentElement.className = selectedValue;
+                        }
+                    } else {
+                        // Sat/Sun remain independent
+                        this.parentElement.className = selectedValue;
+                    }
+                };
+
+                td.appendChild(sel);
+                row.appendChild(td);
+            }
+            body.appendChild(row);
+        });
+    }
+
+    function exportToExcel() {
+        const rows = document.querySelectorAll
