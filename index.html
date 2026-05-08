@@ -6,7 +6,14 @@
     <title>EMEA DUTCH WEEKLY ROSTER</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <style>
-        :root { --primary: #003366; --morning: #2ECC71; --afternoon: #F39C12; --night: #9B59B6; --sunday-special: #3498DB; --off: #E74C3C; }
+        :root { 
+            --primary: #003366; 
+            --morning: #2ECC71; 
+            --afternoon: #F39C12; 
+            --night: #9B59B6; 
+            --sunday-special: #3498DB; 
+            --off: #E74C3C; 
+        }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: #f0f2f5; padding: 20px; }
         .container { max-width: 99%; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
         .header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee; }
@@ -16,14 +23,17 @@
         .name-col { text-align: left; background: #2c3e50 !important; color: white !important; padding-left: 10px; width: 180px; }
         .status-select { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); font-size: 9px; margin-top: 5px; border-radius: 3px; width: 75px; cursor: pointer; }
         select { width: 100%; padding: 4px 0; border: none; font-size: 11px; font-weight: 800; cursor: pointer; background: transparent; }
+        
         .s-off { background-color: var(--off) !important; color: white !important; }
         .s-morning { background-color: var(--morning) !important; color: white !important; }
         .s-afternoon { background-color: var(--afternoon) !important; color: white !important; }
         .s-night { background-color: var(--night) !important; color: white !important; }
         .s-sun { background-color: var(--sunday-special) !important; color: white !important; }
+        
         .btn { padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; margin-left: 5px;}
         .btn-excel { background: #27ae60; }
         .btn-random { background: #16a085; }
+        .date-label { font-size: 10px; opacity: 0.9; margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -56,6 +66,7 @@
         <tbody id="rosterBody"></tbody>
     </table>
 </div>
+
 <script>
     const team = ["Sivasankar Murugananatham", "Sonalineveditha Thirumalazhagan", "Reshma Veerabathiran", "Maheswari Boopalan", "Vijayakrishnan Ramesh"];
 
@@ -68,6 +79,7 @@
         const body = document.getElementById('rosterBody');
         const season = document.getElementById('seasonPicker').value;
         body.innerHTML = '';
+
         team.forEach((name) => {
             const row = document.createElement('tr');
             const tdName = document.createElement('td');
@@ -78,18 +90,44 @@
                                    <option value="fixed">📌 Fixed</option>
                                </select>`;
             row.appendChild(tdName);
+
             for(let i=0; i<7; i++) {
                 const td = document.createElement('td');
                 const sel = document.createElement('select');
-                const options = (i === 6) ? [{id:"s-off", l:"OFF"}, {id:"s-sun", s:"16:00", e:"18:00", suf:"SHIFT"}] :
-                [{id:"s-off", l:"OFF"}, {id:"s-morning", s:"09:00", e:"18:00", suf:"MORNING"}, {id:"s-afternoon", s:"12:30", e:"21:30", suf:"AFTERNOON"}, {id:"s-night", s:"17:30", e:"02:30", suf:"NIGHT"}];
+                
+                let options = [];
+                if (i === 6) { 
+                    // Sunday: 16:00 - 17:00 only
+                    options = [
+                        {id:"s-off", l:"OFF"}, 
+                        {id:"s-sun", s:"16:00", e:"17:00", suf:"SHIFT"}
+                    ];
+                } else if (i === 5) {
+                    // Saturday: Morning or OFF
+                    options = [
+                        {id:"s-off", l:"OFF"}, 
+                        {id:"s-morning", s:"09:00", e:"18:00", suf:"MORNING"}
+                    ];
+                } else {
+                    // Weekdays
+                    options = [
+                        {id:"s-off", l:"OFF"}, 
+                        {id:"s-morning", s:"09:00", e:"18:00", suf:"MORNING"}, 
+                        {id:"s-afternoon", s:"12:30", e:"21:30", suf:"AFTERNOON"}, 
+                        {id:"s-night", s:"17:30", e:"02:30", suf:"NIGHT"}
+                    ];
+                }
+
                 options.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
                     opt.text = s.id === "s-off" ? "OFF" : `${season === 'winter' ? addOneHour(s.s) : s.s}-${season === 'winter' ? addOneHour(s.e) : s.e} ${s.suf}`;
                     sel.appendChild(opt);
                 });
-                sel.value = 's-off'; td.className = 's-off';
+
+                sel.value = 's-off'; 
+                td.className = 's-off';
+
                 sel.onchange = function() { 
                     const val = this.value;
                     const status = this.closest('tr').querySelector('.status-select').value;
@@ -99,6 +137,7 @@
                         });
                     } else { this.parentElement.className = val; }
                 };
+
                 td.appendChild(sel);
                 row.appendChild(td);
             }
@@ -114,12 +153,9 @@
             rows.forEach(row => {
                 const status = row.querySelector('.status-select').value;
                 const selects = row.querySelectorAll("td select:not(.status-select)");
-                const currentDaySelect = selects[day];
                 if (status === 'fixed') {
-                    if (currentDaySelect.value === 's-morning') morningCount++;
-                } else {
-                    rotatableRows.push(row);
-                }
+                    if (selects[day].value === 's-morning') morningCount++;
+                } else { rotatableRows.push(row); }
             });
             rotatableRows.sort(() => Math.random() - 0.5);
             rotatableRows.forEach(row => {
@@ -128,9 +164,7 @@
                 if (morningCount < 2) {
                     sel.value = "s-morning";
                     morningCount++;
-                } else {
-                    sel.value = "s-afternoon";
-                }
+                } else { sel.value = "s-afternoon"; }
                 sel.parentElement.className = sel.value;
             });
         }
