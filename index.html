@@ -14,6 +14,7 @@
         th { background-color: var(--primary); color: white; padding: 10px 2px; border-radius: 4px; font-size: 12px; }
         td { border: 1px solid #ddd; padding: 8px 2px; text-align: center; font-weight: 700; border-radius: 4px; min-height: 45px; word-wrap: break-word; }
         .name-col { text-align: left; background: #2c3e50 !important; color: white !important; padding-left: 10px; width: 180px; }
+        .status-select { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); font-size: 9px; margin-top: 5px; border-radius: 3px; width: 75px; cursor: pointer; }
         select { width: 100%; padding: 4px 0; border: none; font-size: 11px; font-weight: 800; cursor: pointer; background: transparent; }
         .s-off { background-color: var(--off) !important; color: white !important; }
         .s-morning { background-color: var(--morning) !important; color: white !important; }
@@ -42,7 +43,7 @@
     <table>
         <thead>
             <tr>
-                <th class="name-col">Member</th>
+                <th class="name-col">Member & Status</th>
                 <th id="d0">MON<div class="date-label"></div></th>
                 <th id="d1">TUE<div class="date-label"></div></th>
                 <th id="d2">WED<div class="date-label"></div></th>
@@ -71,27 +72,40 @@
             const row = document.createElement('tr');
             const tdName = document.createElement('td');
             tdName.className = 'name-col';
-            tdName.innerHTML = `<div style="font-size:12px">${name}</div>`;
+            tdName.innerHTML = `<div style="font-size:12px">${name}</div>
+                               <select class="status-select">
+                                   <option value="rotate">🔄 Rotate</option>
+                                   <option value="fixed">📌 Fixed</option>
+                               </select>`;
             row.appendChild(tdName);
+            
             for(let i=0; i<7; i++) {
                 const td = document.createElement('td');
                 const sel = document.createElement('select');
                 const options = (i === 6) ? [{id:"s-off", l:"OFF"}, {id:"s-sun", s:"16:00", e:"18:00", suf:"SHIFT"}] :
                 [{id:"s-off", l:"OFF"}, {id:"s-morning", s:"09:00", e:"18:00", suf:"MORNING"}, {id:"s-afternoon", s:"12:30", e:"21:30", suf:"AFTERNOON"}, {id:"s-night", s:"17:30", e:"02:30", suf:"NIGHT"}];
+                
                 options.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
                     opt.text = s.id === "s-off" ? "OFF" : `${season === 'winter' ? addOneHour(s.s) : s.s}-${season === 'winter' ? addOneHour(s.e) : s.e} ${s.suf}`;
                     sel.appendChild(opt);
                 });
+
                 sel.value = 's-off'; td.className = 's-off';
+                
                 sel.onchange = function() { 
                     const val = this.value;
-                    if (i < 5) {
-                        this.closest('tr').querySelectorAll('td select').forEach((s, idx) => {
+                    const status = this.closest('tr').querySelector('.status-select').value;
+                    
+                    if (status === 'fixed' && i < 5) {
+                        // Sync Mon-Fri only if status is Fixed
+                        this.closest('tr').querySelectorAll('td select:not(.status-select)').forEach((s, idx) => {
                             if(idx < 5) { s.value = val; s.parentElement.className = val; }
                         });
-                    } else { this.parentElement.className = val; }
+                    } else { 
+                        this.parentElement.className = val; 
+                    }
                 };
                 td.appendChild(sel);
                 row.appendChild(td);
@@ -114,10 +128,18 @@
 
     function smartRandomize() {
         document.querySelectorAll("#rosterBody tr").forEach(row => {
+            const status = row.querySelector('.status-select').value;
             const rand = Math.random() > 0.5 ? "s-morning" : "s-afternoon";
-            row.querySelectorAll("select").forEach((s, i) => {
-                if (i < 5) { s.value = rand; s.parentElement.className = rand; }
-            });
+            const selects = row.querySelectorAll("td select:not(.status-select)");
+            
+            if (status === 'fixed') {
+                for (let i = 0; i < 5; i++) { selects[i].value = rand; selects[i].parentElement.className = rand; }
+            } else {
+                for (let i = 0; i < 5; i++) { 
+                    const dailyRand = Math.random() > 0.5 ? "s-morning" : "s-afternoon";
+                    selects[i].value = dailyRand; selects[i].parentElement.className = dailyRand; 
+                }
+            }
         });
     }
 
@@ -125,14 +147,16 @@
         const wb = XLSX.utils.book_new();
         const data = [];
         const hex = { head: "003366", morn: "2ECC71", aft: "F39C12", nite: "9B59B6", sun: "3498DB", off: "E74C3C", name: "2C3E50", white: "FFFFFF" };
+        
         const headRow = [];
         document.querySelectorAll("thead th").forEach((th, i) => {
             headRow.push({ v: th.innerText.replace('\n', ' '), s: { fill: { fgColor: { rgb: i === 7 ? hex.sun : hex.head } }, font: { color: { rgb: hex.white }, bold: true }, alignment: { horizontal: "center" } } });
         });
         data.push(headRow);
+
         document.querySelectorAll("#rosterBody tr").forEach(row => {
-            const rowData = [{ v: row.querySelector(".name-col").innerText, s: { fill: { fgColor: { rgb: hex.name } }, font: { color: { rgb: hex.white }, bold: true } } }];
-            row.querySelectorAll("td select").forEach(sel => {
+            const rowData = [{ v: row.querySelector(".name-col div").innerText, s: { fill: { fgColor: { rgb: hex.name } }, font: { color: { rgb: hex.white }, bold: true } } }];
+            row.querySelectorAll("td select:not(.status-select)").forEach(sel => {
                 let bg = hex.white;
                 if (sel.value === 's-morning') bg = hex.morn;
                 else if (sel.value === 's-afternoon') bg = hex.aft;
@@ -143,6 +167,7 @@
             });
             data.push(rowData);
         });
+
         const ws = XLSX.utils.aoa_to_sheet(data);
         ws['!cols'] = Array(8).fill({ wch: 22 });
         XLSX.utils.book_append_sheet(wb, ws, "Roster");
