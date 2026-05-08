@@ -6,15 +6,7 @@
     <title>EMEA DUTCH WEEKLY ROSTER</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <style>
-        :root {
-            --primary: #003366;
-            --morning: #2ECC71; 
-            --afternoon: #F39C12;
-            --night: #9B59B6;
-            --sunday-special: #3498DB;
-            --off: #E74C3C;
-        }
-
+        :root { --primary: #003366; --morning: #2ECC71; --afternoon: #F39C12; --night: #9B59B6; --sunday-special: #3498DB; --off: #E74C3C; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: #f0f2f5; padding: 20px; }
         .container { max-width: 99%; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
         .header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #eee; }
@@ -22,21 +14,18 @@
         th { background-color: var(--primary); color: white; padding: 10px 2px; border-radius: 4px; font-size: 12px; }
         td { border: 1px solid #ddd; padding: 8px 2px; text-align: center; font-weight: 700; border-radius: 4px; min-height: 45px; word-wrap: break-word; }
         .name-col { text-align: left; background: #2c3e50 !important; color: white !important; padding-left: 10px; width: 180px; }
-        select { width: 100%; padding: 4px 0; border: none; font-size: 11px; font-weight: 800; cursor: pointer; background: transparent; white-space: normal; }
-
+        select { width: 100%; padding: 4px 0; border: none; font-size: 11px; font-weight: 800; cursor: pointer; background: transparent; }
         .s-off { background-color: var(--off) !important; color: white !important; }
         .s-morning { background-color: var(--morning) !important; color: white !important; }
         .s-afternoon { background-color: var(--afternoon) !important; color: white !important; }
         .s-night { background-color: var(--night) !important; color: white !important; }
         .s-sun { background-color: var(--sunday-special) !important; color: white !important; }
-
-        .btn { padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; margin-left: 5px;}
+        .btn { padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; margin-left: 5px;}
         .btn-excel { background: #27ae60; }
         .btn-random { background: #16a085; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="header-section">
         <h2 style="color: var(--primary); margin: 0;">EMEA DUTCH WEEKLY ROSTER</h2>
@@ -50,7 +39,6 @@
             <button class="btn btn-excel" onclick="exportToExcel()">📊 Export Excel</button>
         </div>
     </div>
-
     <table>
         <thead>
             <tr>
@@ -67,33 +55,107 @@
         <tbody id="rosterBody"></tbody>
     </table>
 </div>
-
 <script>
     const team = ["Sivasankar Murugananatham", "Sonalineveditha Thirumalazhagan", "Reshma Veerabathiran", "Maheswari Boopalan", "Vijayakrishnan Ramesh"];
+
+    function addOneHour(t) {
+        let [h, m] = t.split(':').map(Number);
+        return `${((h + 1) % 24).toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    }
 
     function renderRoster() {
         const body = document.getElementById('rosterBody');
         const season = document.getElementById('seasonPicker').value;
         body.innerHTML = '';
-        
         team.forEach((name) => {
             const row = document.createElement('tr');
             const tdName = document.createElement('td');
             tdName.className = 'name-col';
             tdName.innerHTML = `<div style="font-size:12px">${name}</div>`;
             row.appendChild(tdName);
-
             for(let i=0; i<7; i++) {
                 const td = document.createElement('td');
                 const sel = document.createElement('select');
                 const options = (i === 6) ? [{id:"s-off", l:"OFF"}, {id:"s-sun", s:"16:00", e:"18:00", suf:"SHIFT"}] :
                 [{id:"s-off", l:"OFF"}, {id:"s-morning", s:"09:00", e:"18:00", suf:"MORNING"}, {id:"s-afternoon", s:"12:30", e:"21:30", suf:"AFTERNOON"}, {id:"s-night", s:"17:30", e:"02:30", suf:"NIGHT"}];
-                
                 options.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
-                    if (s.id === "s-off") opt.text = "OFF";
-                    else {
-                        let ds = s.s, de = s.e;
-                        if (season === 'winter') { ds = addOneHour(ds); de = addOneHour(de); }
-                        opt
+                    opt.text = s.id === "s-off" ? "OFF" : `${season === 'winter' ? addOneHour(s.s) : s.s}-${season === 'winter' ? addOneHour(s.e) : s.e} ${s.suf}`;
+                    sel.appendChild(opt);
+                });
+                sel.value = 's-off'; td.className = 's-off';
+                sel.onchange = function() { 
+                    const val = this.value;
+                    if (i < 5) {
+                        this.closest('tr').querySelectorAll('td select').forEach((s, idx) => {
+                            if(idx < 5) { s.value = val; s.parentElement.className = val; }
+                        });
+                    } else { this.parentElement.className = val; }
+                };
+                td.appendChild(sel);
+                row.appendChild(td);
+            }
+            body.appendChild(row);
+        });
+    }
+
+    function updateCalendarDates() {
+        const dateVal = document.getElementById('weekPicker').value;
+        if (!dateVal) return;
+        const start = new Date(dateVal);
+        for(let i=0; i<7; i++) {
+            const cur = new Date(start);
+            cur.setDate(start.getDate() + i);
+            const label = document.querySelector(`#d${i} .date-label`);
+            if (label) label.innerText = cur.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        }
+    }
+
+    function smartRandomize() {
+        document.querySelectorAll("#rosterBody tr").forEach(row => {
+            const rand = Math.random() > 0.5 ? "s-morning" : "s-afternoon";
+            row.querySelectorAll("select").forEach((s, i) => {
+                if (i < 5) { s.value = rand; s.parentElement.className = rand; }
+            });
+        });
+    }
+
+    function exportToExcel() {
+        const wb = XLSX.utils.book_new();
+        const data = [];
+        const hex = { head: "003366", morn: "2ECC71", aft: "F39C12", nite: "9B59B6", sun: "3498DB", off: "E74C3C", name: "2C3E50", white: "FFFFFF" };
+        const headRow = [];
+        document.querySelectorAll("thead th").forEach((th, i) => {
+            headRow.push({ v: th.innerText.replace('\n', ' '), s: { fill: { fgColor: { rgb: i === 7 ? hex.sun : hex.head } }, font: { color: { rgb: hex.white }, bold: true }, alignment: { horizontal: "center" } } });
+        });
+        data.push(headRow);
+        document.querySelectorAll("#rosterBody tr").forEach(row => {
+            const rowData = [{ v: row.querySelector(".name-col").innerText, s: { fill: { fgColor: { rgb: hex.name } }, font: { color: { rgb: hex.white }, bold: true } } }];
+            row.querySelectorAll("td select").forEach(sel => {
+                let bg = hex.white;
+                if (sel.value === 's-morning') bg = hex.morn;
+                else if (sel.value === 's-afternoon') bg = hex.aft;
+                else if (sel.value === 's-night') bg = hex.nite;
+                else if (sel.value === 's-sun') bg = hex.sun;
+                else if (sel.value === 's-off') bg = hex.off;
+                rowData.push({ v: sel.options[sel.selectedIndex].text, s: { fill: { fgColor: { rgb: bg } }, font: { color: { rgb: hex.white }, bold: true }, alignment: { horizontal: "center" } } });
+            });
+            data.push(rowData);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = Array(8).fill({ wch: 22 });
+        XLSX.utils.book_append_sheet(wb, ws, "Roster");
+        XLSX.writeFile(wb, `EMEA_Roster.xlsx`);
+    }
+
+    window.onload = () => {
+        const now = new Date();
+        const monday = new Date(now.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1)));
+        document.getElementById('weekPicker').value = monday.toISOString().split('T')[0];
+        renderRoster();
+        updateCalendarDates();
+    };
+</script>
+</body>
+</html>
