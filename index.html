@@ -78,22 +78,18 @@
                                    <option value="fixed">📌 Fixed</option>
                                </select>`;
             row.appendChild(tdName);
-            
             for(let i=0; i<7; i++) {
                 const td = document.createElement('td');
                 const sel = document.createElement('select');
                 const options = (i === 6) ? [{id:"s-off", l:"OFF"}, {id:"s-sun", s:"16:00", e:"18:00", suf:"SHIFT"}] :
                 [{id:"s-off", l:"OFF"}, {id:"s-morning", s:"09:00", e:"18:00", suf:"MORNING"}, {id:"s-afternoon", s:"12:30", e:"21:30", suf:"AFTERNOON"}, {id:"s-night", s:"17:30", e:"02:30", suf:"NIGHT"}];
-                
                 options.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
                     opt.text = s.id === "s-off" ? "OFF" : `${season === 'winter' ? addOneHour(s.s) : s.s}-${season === 'winter' ? addOneHour(s.e) : s.e} ${s.suf}`;
                     sel.appendChild(opt);
                 });
-
                 sel.value = 's-off'; td.className = 's-off';
-                
                 sel.onchange = function() { 
                     const val = this.value;
                     const status = this.closest('tr').querySelector('.status-select').value;
@@ -111,27 +107,21 @@
     }
 
     function smartRandomize() {
-        const rows = document.querySelectorAll("#rosterBody tr");
-        // Randomize day by day to ensure Morning counts
+        const rows = Array.from(document.querySelectorAll("#rosterBody tr"));
         for (let day = 0; day < 5; day++) {
             let morningCount = 0;
             let rotatableRows = [];
-
             rows.forEach(row => {
                 const status = row.querySelector('.status-select').value;
                 const selects = row.querySelectorAll("td select:not(.status-select)");
                 const currentDaySelect = selects[day];
-
                 if (status === 'fixed') {
                     if (currentDaySelect.value === 's-morning') morningCount++;
                 } else {
                     rotatableRows.push(row);
                 }
             });
-
-            // Shuffle available employees
             rotatableRows.sort(() => Math.random() - 0.5);
-
             rotatableRows.forEach(row => {
                 const selects = row.querySelectorAll("td select:not(.status-select)");
                 const sel = selects[day];
@@ -167,7 +157,6 @@
             headRow.push({ v: th.innerText.replace('\n', ' '), s: { fill: { fgColor: { rgb: i === 7 ? hex.sun : hex.head } }, font: { color: { rgb: hex.white }, bold: true }, alignment: { horizontal: "center" } } });
         });
         data.push(headRow);
-
         document.querySelectorAll("#rosterBody tr").forEach(row => {
             const rowData = [{ v: row.querySelector(".name-col div").innerText, s: { fill: { fgColor: { rgb: hex.name } }, font: { color: { rgb: hex.white }, bold: true } } }];
             row.querySelectorAll("td select:not(.status-select)").forEach(sel => {
@@ -181,7 +170,19 @@
             });
             data.push(rowData);
         });
-
         const ws = XLSX.utils.aoa_to_sheet(data);
         ws['!cols'] = Array(8).fill({ wch: 22 });
-        XLSX.utils.book_append_sheet
+        XLSX.utils.book_append_sheet(wb, ws, "Roster");
+        XLSX.writeFile(wb, `EMEA_Roster.xlsx`);
+    }
+
+    window.onload = () => {
+        const now = new Date();
+        const monday = new Date(now.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1)));
+        document.getElementById('weekPicker').value = monday.toISOString().split('T')[0];
+        renderRoster();
+        updateCalendarDates();
+    };
+</script>
+</body>
+</html>
