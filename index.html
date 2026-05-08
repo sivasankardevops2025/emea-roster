@@ -97,21 +97,53 @@
                 sel.onchange = function() { 
                     const val = this.value;
                     const status = this.closest('tr').querySelector('.status-select').value;
-                    
                     if (status === 'fixed' && i < 5) {
-                        // Sync Mon-Fri only if status is Fixed
                         this.closest('tr').querySelectorAll('td select:not(.status-select)').forEach((s, idx) => {
                             if(idx < 5) { s.value = val; s.parentElement.className = val; }
                         });
-                    } else { 
-                        this.parentElement.className = val; 
-                    }
+                    } else { this.parentElement.className = val; }
                 };
                 td.appendChild(sel);
                 row.appendChild(td);
             }
             body.appendChild(row);
         });
+    }
+
+    function smartRandomize() {
+        const rows = document.querySelectorAll("#rosterBody tr");
+        // Randomize day by day to ensure Morning counts
+        for (let day = 0; day < 5; day++) {
+            let morningCount = 0;
+            let rotatableRows = [];
+
+            rows.forEach(row => {
+                const status = row.querySelector('.status-select').value;
+                const selects = row.querySelectorAll("td select:not(.status-select)");
+                const currentDaySelect = selects[day];
+
+                if (status === 'fixed') {
+                    if (currentDaySelect.value === 's-morning') morningCount++;
+                } else {
+                    rotatableRows.push(row);
+                }
+            });
+
+            // Shuffle available employees
+            rotatableRows.sort(() => Math.random() - 0.5);
+
+            rotatableRows.forEach(row => {
+                const selects = row.querySelectorAll("td select:not(.status-select)");
+                const sel = selects[day];
+                if (morningCount < 2) {
+                    sel.value = "s-morning";
+                    morningCount++;
+                } else {
+                    sel.value = "s-afternoon";
+                }
+                sel.parentElement.className = sel.value;
+            });
+        }
     }
 
     function updateCalendarDates() {
@@ -126,28 +158,10 @@
         }
     }
 
-    function smartRandomize() {
-        document.querySelectorAll("#rosterBody tr").forEach(row => {
-            const status = row.querySelector('.status-select').value;
-            const rand = Math.random() > 0.5 ? "s-morning" : "s-afternoon";
-            const selects = row.querySelectorAll("td select:not(.status-select)");
-            
-            if (status === 'fixed') {
-                for (let i = 0; i < 5; i++) { selects[i].value = rand; selects[i].parentElement.className = rand; }
-            } else {
-                for (let i = 0; i < 5; i++) { 
-                    const dailyRand = Math.random() > 0.5 ? "s-morning" : "s-afternoon";
-                    selects[i].value = dailyRand; selects[i].parentElement.className = dailyRand; 
-                }
-            }
-        });
-    }
-
     function exportToExcel() {
         const wb = XLSX.utils.book_new();
         const data = [];
         const hex = { head: "003366", morn: "2ECC71", aft: "F39C12", nite: "9B59B6", sun: "3498DB", off: "E74C3C", name: "2C3E50", white: "FFFFFF" };
-        
         const headRow = [];
         document.querySelectorAll("thead th").forEach((th, i) => {
             headRow.push({ v: th.innerText.replace('\n', ' '), s: { fill: { fgColor: { rgb: i === 7 ? hex.sun : hex.head } }, font: { color: { rgb: hex.white }, bold: true }, alignment: { horizontal: "center" } } });
@@ -170,17 +184,4 @@
 
         const ws = XLSX.utils.aoa_to_sheet(data);
         ws['!cols'] = Array(8).fill({ wch: 22 });
-        XLSX.utils.book_append_sheet(wb, ws, "Roster");
-        XLSX.writeFile(wb, `EMEA_Roster.xlsx`);
-    }
-
-    window.onload = () => {
-        const now = new Date();
-        const monday = new Date(now.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1)));
-        document.getElementById('weekPicker').value = monday.toISOString().split('T')[0];
-        renderRoster();
-        updateCalendarDates();
-    };
-</script>
-</body>
-</html>
+        XLSX.utils.book_append_sheet
